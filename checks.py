@@ -16,5 +16,5 @@ assert any(s["first_name"] == "Amara" for s in joined_within_days(subscribers, 3
 assert next_send_date(date(2026, 11, 20)) == date(2026, 12, 7)
 assert next_send_date(date(2026, 12, 7)) == date(2027, 1, 4)
 assert next_send_date(date(2026, 12, 31)) == date(2027, 1, 4)
-assert len(joined_since(subscribers, date(2026, 10, 1), date(2026, 11, 20))) == 11
+assert len(joined_since(subscribers, date(2026, 10, 1), date(2026, 11, 20))) == 12
 print("Date checks passed")

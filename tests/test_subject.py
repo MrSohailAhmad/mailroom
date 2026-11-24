@@ -1,4 +1,4 @@
-from mailroom import check_subject
+from mailroom.checks import check_subject
 
 BODY = "\nPreview: A short preview\n\nHi {{first_name}},\n"
 

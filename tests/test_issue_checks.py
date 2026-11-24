@@ -1,7 +1,6 @@
 import subprocess
-import sys
 
-from mailroom import check_issue
+from mailroom.checks import check_issue
 
 with open("issues/issue-01.md", encoding="utf-8") as file:
     ISSUE = file.read()
@@ -62,7 +61,7 @@ def test_missing_preview_line_is_a_problem():
 
 
 def run_check(path):
-    return subprocess.run([sys.executable, "mailroom.py", "check", path], capture_output=True, text=True)
+    return subprocess.run(["uv", "run", "mailroom", "check", path], capture_output=True, text=True)
 
 
 def test_check_command_prints_ok_and_exits_0(tmp_path):

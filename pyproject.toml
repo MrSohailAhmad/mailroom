@@ -5,11 +5,17 @@ description = "Command-line tool for the Kettlebird Tea Steep Club newsletter"
 requires-python = ">=3.12"
 dependencies = []
 
+[project.scripts]
+mailroom = "mailroom.commands:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [dependency-groups]
 dev = [
     "pytest>=9.2.0",
 ]
 
 [tool.pytest.ini_options]
-pythonpath = ["."]
 testpaths = ["tests"]

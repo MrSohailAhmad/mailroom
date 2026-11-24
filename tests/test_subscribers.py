@@ -1,6 +1,7 @@
 from datetime import date
 
-from mailroom import count_by_group, joined_since, joined_within_days, next_send_date, read_subscribers
+from mailroom.send_dates import next_send_date
+from mailroom.subscribers import count_by_group, joined_since, joined_within_days, read_subscribers
 
 SUBSCRIBERS = read_subscribers("data/subscribers.csv")
 

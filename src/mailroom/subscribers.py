@@ -41,6 +41,28 @@ def import_rows(path: str) -> tuple[list[Subscriber], list[tuple[str, str]]]:
     return accepted, rejected
 
 
+ALLOWED_DOMAIN = "@example.com"
+
+
+def apply_our_rules(
+    subscribers: list[Subscriber], run_date: date
+) -> tuple[list[Subscriber], list[tuple[Subscriber, str]]]:
+    """The model checks the shape. These rules check the meaning.
+
+    The date rule needs the run date, which the model does not have, so it lives here.
+    """
+    kept: list[Subscriber] = []
+    broken: list[tuple[Subscriber, str]] = []
+    for subscriber in subscribers:
+        if not subscriber.email.lower().endswith(ALLOWED_DOMAIN):
+            broken.append((subscriber, f"email: must end in {ALLOWED_DOMAIN}"))
+        elif subscriber.joined_on > run_date:
+            broken.append((subscriber, f"joined_on: {subscriber.joined_on} is after the run date {run_date}"))
+        else:
+            kept.append(subscriber)
+    return kept, broken
+
+
 def read_subscribers(path: str) -> list[Subscriber]:
     accepted, _ = import_rows(path)
     return accepted

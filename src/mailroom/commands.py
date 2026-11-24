@@ -5,7 +5,7 @@ from datetime import date
 from mailroom.checks import check_issue
 from mailroom.issue import Issue
 from mailroom.send_dates import next_send_date
-from mailroom.subscribers import count_by_group, import_rows, joined_since, joined_within_days, read_subscribers
+from mailroom.subscribers import apply_our_rules, count_by_group, import_rows, joined_since, joined_within_days, read_subscribers
 
 
 def main() -> None:
@@ -20,6 +20,7 @@ def main() -> None:
     p_check.add_argument("issue")
     p_import = sub.add_parser("import", help="check new sign-ups through the model")
     p_import.add_argument("file")
+    p_import.add_argument("--run-date", type=date.fromisoformat)
     p_next = sub.add_parser("next-send", help="date of the next send")
     p_next.add_argument("--run-date", type=date.fromisoformat)
     args = parser.parse_args()
@@ -47,6 +48,8 @@ def main() -> None:
         print("OK")
     elif args.command == "import":
         accepted, rejected = import_rows(args.file)
+        accepted, broken = apply_our_rules(accepted, run_date)
+        rejected += [(subscriber.first_name, why) for subscriber, why in broken]
         for subscriber in accepted:
             print(f"accepted: {subscriber.full_name}")
         for name, why in rejected:

@@ -1,5 +1,8 @@
+import asyncio
 import os
-from typing import Any, cast
+import time
+from dataclasses import dataclass
+from typing import cast
 from urllib.parse import urlparse
 
 import httpx
@@ -64,9 +67,11 @@ def raise_for(response: httpx.Response, what: str) -> None:
     raise SendError(f"The server answered {response.status_code}: {message}")
 
 
-def request(client: httpx.Client, method: str, path: str, api_key: str, **kwargs: Any) -> httpx.Response:
+def request(
+    client: httpx.Client, method: str, path: str, api_key: str, json: dict[str, object] | None = None
+) -> httpx.Response:
     try:
-        return client.request(method, path, headers={"Authorization": f"Bearer {api_key}"}, **kwargs)
+        return client.request(method, path, headers={"Authorization": f"Bearer {api_key}"}, json=json)
     except httpx.ConnectError:
         raise ServerDown(f"The practice server at {client.base_url} is not running. {START_SERVER}") from None
 
@@ -95,17 +100,69 @@ def make_client() -> httpx.Client:
     return httpx.Client(base_url=url, timeout=10.0)
 
 
+def email_body(email: PlannedEmail) -> dict[str, object]:
+    return {"from": SENDER, "to": [email.to], "subject": email.subject, "text": email.text}
+
+
 def send_one(client: httpx.Client, email: PlannedEmail, api_key: str) -> str:
     check_server(str(client.base_url))
     check_recipient(email.to)
-    body = {"from": SENDER, "to": [email.to], "subject": email.subject, "text": email.text}
+    body = email_body(email)
     response = request(client, "POST", "/emails", api_key, json=body)
     raise_for(response, email.to)
     return str(response.json()["id"])
 
 
-def get_email(client: httpx.Client, email_id: str, api_key: str) -> dict[str, Any]:
+def get_email(client: httpx.Client, email_id: str, api_key: str) -> dict[str, object]:
     response = request(client, "GET", f"/emails/{email_id}", api_key)
     raise_for(response, email_id)
-    data: dict[str, Any] = response.json()
-    return data
+    return cast(dict[str, object], response.json())
+
+
+@dataclass
+class SendResult:
+    to: str
+    group: str
+    email_id: str | None
+    error: str | None
+
+
+def send_all_one_by_one(
+    client: httpx.Client, emails: list[PlannedEmail], api_key: str, latency: float
+) -> list[SendResult]:
+    results: list[SendResult] = []
+    for email in emails:
+        time.sleep(latency)  # stands in for the internet
+        try:
+            results.append(SendResult(email.to, email.group, send_one(client, email, api_key), None))
+        except SendError as error:
+            results.append(SendResult(email.to, email.group, None, str(error)))
+    return results
+
+
+async def send_one_async(client: httpx.AsyncClient, email: PlannedEmail, api_key: str) -> str:
+    check_server(str(client.base_url))
+    check_recipient(email.to)
+    try:
+        response = await client.post("/emails", json=email_body(email), headers={"Authorization": f"Bearer {api_key}"})
+    except httpx.ConnectError:
+        raise ServerDown(f"The practice server at {client.base_url} is not running. {START_SERVER}") from None
+    raise_for(response, email.to)
+    return str(response.json()["id"])
+
+
+async def send_all_at_once(
+    client: httpx.AsyncClient, emails: list[PlannedEmail], api_key: str, latency: float, at_once: int
+) -> list[SendResult]:
+    limit = asyncio.Semaphore(at_once)
+
+    async def send(email: PlannedEmail) -> SendResult:
+        async with limit:
+            await asyncio.sleep(latency)  # stands in for the internet
+            try:
+                return SendResult(email.to, email.group, await send_one_async(client, email, api_key), None)
+            except SendError as error:
+                return SendResult(email.to, email.group, None, str(error))
+
+    # gather returns results in the order the tasks were given: the plan's order.
+    return list(await asyncio.gather(*(send(email) for email in emails)))

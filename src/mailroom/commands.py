@@ -1,12 +1,28 @@
 import argparse
+import asyncio
 import sys
+import time
 from datetime import date
 from pathlib import Path
 
 from mailroom.checks import check_issue
 from mailroom.issue import Issue
 from mailroom.plan import PlannedEmail, body_without_headers, build_plan, write_plan
-from mailroom.sending import SendError, SendRefused, api_key, get_email, make_client, send_one
+import httpx
+
+from mailroom.sending import (
+    SendError,
+    SendRefused,
+    SendResult,
+    api_key,
+    api_url,
+    check_server,
+    get_email,
+    make_client,
+    send_all_at_once,
+    send_all_one_by_one,
+    send_one,
+)
 from mailroom.send_dates import next_send_date
 from mailroom.subscribers import (
     DataFileError,
@@ -41,6 +57,8 @@ def build_parser() -> argparse.ArgumentParser:
     p_send.add_argument("--run-date", type=date.fromisoformat)
     p_send.add_argument("--subscribers", default="data/subscribers.csv")
     p_send.add_argument("--outbox", default="outbox")
+    p_send.add_argument("--latency", type=float, default=0.0, help="seconds to wait before each request")
+    p_send.add_argument("--at-once", type=int, help="send this many at the same time")
 
     p_one = sub.add_parser("send-one", help="send one email to the practice server")
     p_one.add_argument("issue")
@@ -49,6 +67,20 @@ def build_parser() -> argparse.ArgumentParser:
     p_next = sub.add_parser("next-send", help="date of the next send")
     p_next.add_argument("--run-date", type=date.fromisoformat)
     return parser
+
+
+def send_plan(emails: list[PlannedEmail], latency: float, at_once: int | None) -> list[SendResult]:
+    if at_once is None:
+        with make_client() as client:
+            return send_all_one_by_one(client, emails, api_key(), latency)
+
+    async def go() -> list[SendResult]:
+        url = api_url()
+        check_server(url)
+        async with httpx.AsyncClient(base_url=url, timeout=10.0) as client:
+            return await send_all_at_once(client, emails, api_key(), latency, at_once)
+
+    return asyncio.run(go())
 
 
 def print_problems(result: LoadResult) -> None:
@@ -119,7 +151,15 @@ def run(args: argparse.Namespace, run_date: date) -> None:
         write_plan(plan, plan_path)
         print(f"Planned {len(plan.emails)} emails -> {plan_path}")
         if not args.dry_run:
-            print("Real sending arrives in a later step; use --dry-run.")
+            started = time.perf_counter()
+            results = send_plan(plan.emails, args.latency, args.at_once)
+            took = time.perf_counter() - started
+            failures = [r for r in results if r.error]
+            print(f"Sent {len(results) - len(failures)} of {len(results)} in {took:.1f} seconds")
+            for failure in failures:
+                print(f"failed: {failure.to}: {failure.error}")
+            if failures:
+                sys.exit(1)
     elif args.command == "send-one":
         issue = Issue.from_file(args.issue)
         problems = check_issue(issue)

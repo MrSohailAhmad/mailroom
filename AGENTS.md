@@ -9,6 +9,7 @@
 - Never read today's date inside the logic. Pass the run date in.
 - Never read today's date inside the logic. Pass the run date in.
 - When something breaks, show me the full error before changing anything.
+- I decide the test cases and their answers. Never change an expected answer to make a test pass.
 
 ## How I learn
 - I am new to Python. I have completed up to 13.11 of https://agentfactory.panaversity.org/building-ai-workers/programming-fundamentals/ and I update this number as I learn.

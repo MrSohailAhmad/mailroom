@@ -42,6 +42,28 @@ def next_send_date(run_date):
     return first_monday(run_date.year, run_date.month + 1)
 
 
+MAX_SUBJECT = 50
+
+
+def find_line(issue_text, prefix):
+    for line in issue_text.splitlines():
+        if line.startswith(prefix):
+            return line[len(prefix):]
+    return None
+
+
+def check_subject(issue_text):
+    subject = find_line(issue_text, "Subject:")
+    if subject is None:
+        return ["Subject line is missing"]
+    subject = subject.strip()
+    if subject == "":
+        return ["Subject is empty"]
+    if len(subject) > MAX_SUBJECT:
+        return [f"Subject is too long: {len(subject)} characters (max {MAX_SUBJECT})"]
+    return []
+
+
 def main():
     parser = argparse.ArgumentParser(prog="mailroom")
     sub = parser.add_subparsers(dest="command", required=True)

@@ -23,7 +23,7 @@ def test_counts_8_daily_drinkers() -> None:
 
 
 def test_all_24_gave_consent() -> None:
-    assert sum(1 for s in SUBSCRIBERS if s["consent"] != "") == 24
+    assert sum(1 for s in SUBSCRIBERS if s.consent != "") == 24
 
 
 def test_7_joined_in_last_30_days() -> None:
@@ -31,7 +31,7 @@ def test_7_joined_in_last_30_days() -> None:
 
 
 def test_joined_exactly_30_days_ago_counts() -> None:
-    names = [s["first_name"] for s in joined_within_days(SUBSCRIBERS, 30, date(2026, 11, 20))]
+    names = [s.first_name for s in joined_within_days(SUBSCRIBERS, 30, date(2026, 11, 20))]
     assert "Amara" in names
 
 

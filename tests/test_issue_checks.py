@@ -2,6 +2,7 @@ from pathlib import Path
 import subprocess
 
 from mailroom.checks import check_issue
+from mailroom.issue import Issue
 
 with open("issues/issue-01.md", encoding="utf-8") as file:
     ISSUE = file.read()
@@ -11,14 +12,14 @@ FOOTER_2 = "Kettlebird Tea, {{company_address}} · Unsubscribe: {{unsubscribe_ur
 
 
 def test_issue_01_has_no_problems() -> None:
-    assert check_issue(ISSUE) == []
+    assert check_issue(Issue(ISSUE)) == []
 
 
 def test_preview_of_91_characters_is_one_problem() -> None:
     long_preview = "x" * 91
     lines = ISSUE.splitlines(keepends=True)
     lines[1] = f"Preview: {long_preview}\n"
-    problems = check_issue("".join(lines))
+    problems = check_issue(Issue("".join(lines)))
     assert len(problems) == 1
     assert "Preview" in problems[0]
 
@@ -26,37 +27,37 @@ def test_preview_of_91_characters_is_one_problem() -> None:
 def test_preview_of_90_characters_is_fine() -> None:
     lines = ISSUE.splitlines(keepends=True)
     lines[1] = f"Preview: {'x' * 90}\n"
-    assert check_issue("".join(lines)) == []
+    assert check_issue(Issue("".join(lines))) == []
 
 
 def test_no_first_name_is_one_problem() -> None:
-    problems = check_issue(ISSUE.replace("Hi {{first_name}},", "Hi there,"))
+    problems = check_issue(Issue(ISSUE.replace("Hi {{first_name}},", "Hi there,")))
     assert len(problems) == 1
     assert "first_name" in problems[0]
 
 
 def test_two_links_is_one_problem_even_with_http() -> None:
     extra = "\n[Read more](http://kettlebird.example/blog)\n"
-    problems = check_issue(ISSUE.replace("Steep well,", extra + "\nSteep well,"))
+    problems = check_issue(Issue(ISSUE.replace("Steep well,", extra + "\nSteep well,")))
     assert len(problems) == 1
     assert "link" in problems[0]
 
 
 def test_no_link_is_one_problem() -> None:
-    problems = check_issue(ISSUE.replace("[Join The Steep Club](https://kettlebird.example/steep-club)", "Join today."))
+    problems = check_issue(Issue(ISSUE.replace("[Join The Steep Club](https://kettlebird.example/steep-club)", "Join today.")))
     assert len(problems) == 1
     assert "link" in problems[0]
 
 
 def test_no_footer_and_no_greeting_is_two_problems() -> None:
     text = ISSUE.replace(FOOTER_1, "").replace(FOOTER_2, "").replace("Hi {{first_name}},", "Hello,")
-    assert len(check_issue(text)) == 2
+    assert len(check_issue(Issue(text))) == 2
 
 
 def test_missing_preview_line_is_a_problem() -> None:
     lines = ISSUE.splitlines(keepends=True)
     del lines[1]
-    problems = check_issue("".join(lines))
+    problems = check_issue(Issue("".join(lines)))
     assert len(problems) == 1
     assert "Preview" in problems[0]
 

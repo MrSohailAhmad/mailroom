@@ -3,7 +3,7 @@ import sys
 from datetime import date
 
 from mailroom.checks import check_issue
-from mailroom.issue import read_issue
+from mailroom.issue import Issue
 from mailroom.send_dates import next_send_date
 from mailroom.subscribers import count_by_group, joined_since, joined_within_days, read_subscribers
 
@@ -34,10 +34,10 @@ def main() -> None:
         print(f"Total: {len(subscribers)}")
         for group, count in count_by_group(subscribers).items():
             print(f"{group}: {count}")
-        consented = sum(1 for s in subscribers if s["consent"] != "")
+        consented = sum(1 for s in subscribers if s.consent != "")
         print(f"Gave consent: {consented}")
     elif args.command == "check":
-        problems = check_issue(read_issue(args.issue))
+        problems = check_issue(Issue.from_file(args.issue))
         if problems:
             for problem in problems:
                 print(problem)

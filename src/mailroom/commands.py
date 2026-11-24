@@ -69,16 +69,16 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def send_plan(emails: list[PlannedEmail], latency: float, at_once: int | None) -> list[SendResult]:
+def send_plan(emails: list[PlannedEmail], latency: float, at_once: int | None, issue: str) -> list[SendResult]:
     if at_once is None:
         with make_client() as client:
-            return send_all_one_by_one(client, emails, api_key(), latency)
+            return send_all_one_by_one(client, emails, api_key(), latency, issue)
 
     async def go() -> list[SendResult]:
         url = api_url()
         check_server(url)
         async with httpx.AsyncClient(base_url=url, timeout=10.0) as client:
-            return await send_all_at_once(client, emails, api_key(), latency, at_once)
+            return await send_all_at_once(client, emails, api_key(), latency, at_once, issue)
 
     return asyncio.run(go())
 
@@ -152,7 +152,7 @@ def run(args: argparse.Namespace, run_date: date) -> None:
         print(f"Planned {len(plan.emails)} emails -> {plan_path}")
         if not args.dry_run:
             started = time.perf_counter()
-            results = send_plan(plan.emails, args.latency, args.at_once)
+            results = send_plan(plan.emails, args.latency, args.at_once, plan.issue)
             took = time.perf_counter() - started
             failures = [r for r in results if r.error]
             print(f"Sent {len(results) - len(failures)} of {len(results)} in {took:.1f} seconds")

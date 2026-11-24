@@ -21,8 +21,10 @@
 - The key and the address come from the environment. Sending works only against localhost.
 - Handle each status on purpose. Never retry a 4xx.
 - Send with a limit on how many at once.
+- Retry only what can succeed later, and every send has an idempotency key.
+- Mailroom sends with httpx, not the resend SDK: our guards, errors, retries and async stay in our own code.
 
 ## How I learn
-- I am new to Python. I have completed up to 14.8 of https://agentfactory.panaversity.org/building-ai-workers/programming-fundamentals/ and I update this number as I learn.
+- I am new to Python. I have completed up to 14.9 of https://agentfactory.panaversity.org/building-ai-workers/programming-fundamentals/ and I update this number as I learn.
 - Write only with what I have learned. If something new would really help, stop and tell me its name in one line. I decide.
 - When the code uses something new, show me that piece first and ask me to predict what it does. Stay quiet while I guess. Then run it, and explain a line only when I ask.

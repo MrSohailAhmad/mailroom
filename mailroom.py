@@ -133,7 +133,7 @@ def main():
     args = parser.parse_args()
 
     # The only place that reads today's date.
-    run_date = args.run_date or date.today()
+    run_date = getattr(args, "run_date", None) or date.today()
 
     if args.command == "subscribers":
         subscribers = read_subscribers(args.file)

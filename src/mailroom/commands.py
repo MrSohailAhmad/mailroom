@@ -7,6 +7,7 @@ from pathlib import Path
 
 from mailroom.checks import check_issue
 from mailroom.issue import Issue
+from mailroom.report import build_report, read_sent, write_sent
 from mailroom.plan import PlannedEmail, body_without_headers, build_plan, write_plan
 import httpx
 
@@ -63,6 +64,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_one = sub.add_parser("send-one", help="send one email to the practice server")
     p_one.add_argument("issue")
     p_one.add_argument("--to", required=True)
+
+    p_report = sub.add_parser("report", help="how many emails each group got, and any failures")
+    p_report.add_argument("--outbox", default="outbox")
 
     p_next = sub.add_parser("next-send", help="date of the next send")
     p_next.add_argument("--run-date", type=date.fromisoformat)
@@ -154,6 +158,7 @@ def run(args: argparse.Namespace, run_date: date) -> None:
             started = time.perf_counter()
             results = send_plan(plan.emails, args.latency, args.at_once, plan.issue)
             took = time.perf_counter() - started
+            write_sent(results, str(Path(args.outbox) / "sent.json"))
             failures = [r for r in results if r.error]
             print(f"Sent {len(results) - len(failures)} of {len(results)} in {took:.1f} seconds")
             for failure in failures:
@@ -174,5 +179,17 @@ def run(args: argparse.Namespace, run_date: date) -> None:
             print(f"Sent: 200 id={email_id}")
             status = get_email(client, email_id, api_key())
             print(f"Status: {status.get('last_event', 'unknown')}")
+    elif args.command == "report":
+        sent_path = Path(args.outbox) / "sent.json"
+        if not sent_path.exists():
+            raise DataFileError(f"{sent_path} does not exist: run mailroom send first.")
+        report = build_report(read_sent(str(sent_path)))
+        for group, count in report.per_group.items():
+            print(f"{group}: {count}")
+        print(f"Failures: {len(report.failures)}")
+        for failure in report.failures:
+            print(f"failed: {failure.to}: {failure.error}")
+        if report.failures:
+            sys.exit(1)
     elif args.command == "next-send":
         print(f"Next send: {next_send_date(run_date).isoformat()}")

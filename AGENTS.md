@@ -27,8 +27,9 @@
 - A pull request shows its evidence.
 - The checks must pass before a merge.
 - Reviewers read REVIEW.md.
+- Undo a bad merge with a revert pull request, then add the test that would have caught it.
 
 ## How I learn
-- I am new to Python. I have completed up to 15.6 of https://agentfactory.panaversity.org/building-ai-workers/programming-fundamentals/ and I update this number as I learn.
+- I am new to Python. I have completed up to 15.10 of https://agentfactory.panaversity.org/building-ai-workers/programming-fundamentals/ and I update this number as I learn.
 - Write only with what I have learned. If something new would really help, stop and tell me its name in one line. I decide.
 - When the code uses something new, show me that piece first and ask me to predict what it does. Stay quiet while I guess. Then run it, and explain a line only when I ask.

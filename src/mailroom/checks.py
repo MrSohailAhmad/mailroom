@@ -33,10 +33,14 @@ def check_greeting(issue: Issue) -> list[str]:
 
 
 def check_links(issue: Issue) -> list[str]:
+    problems: list[str] = []
     count = len(issue.links)
     if count != 1:
-        return [f"Expected exactly one link, found {count}"]
-    return []
+        problems.append(f"Expected exactly one link, found {count}")
+    for link in issue.links:
+        if not link.startswith("https://"):
+            problems.append(f"Link must use https: {link}")
+    return problems
 
 
 def check_footer(issue: Issue) -> list[str]:

@@ -1,5 +1,6 @@
+import argparse
 import csv
-import sys
+from datetime import date, timedelta
 
 
 def read_subscribers(path):
@@ -15,18 +16,60 @@ def count_by_group(subscribers):
     return counts
 
 
+def joined_on(subscriber):
+    return date.fromisoformat(subscriber["joined_on"])
+
+
+def joined_since(subscribers, start, run_date):
+    return [s for s in subscribers if start <= joined_on(s) <= run_date]
+
+
+def joined_within_days(subscribers, days, run_date):
+    # "The last 30 days" includes the day exactly 30 days before the run date.
+    return joined_since(subscribers, run_date - timedelta(days=days), run_date)
+
+
+def first_monday(year, month):
+    day = date(year, month, 1)
+    while day.weekday() != 0:
+        day += timedelta(days=1)
+    return day
+
+
+def next_send_date(run_date):
+    if run_date.month == 12:
+        return first_monday(run_date.year + 1, 1)
+    return first_monday(run_date.year, run_date.month + 1)
+
+
 def main():
-    command = sys.argv[1] if len(sys.argv) > 1 else ""
-    if command == "subscribers":
-        path = sys.argv[2] if len(sys.argv) > 2 else "data/subscribers.csv"
-        subscribers = read_subscribers(path)
+    parser = argparse.ArgumentParser(prog="mailroom")
+    sub = parser.add_subparsers(dest="command", required=True)
+    p_subs = sub.add_parser("subscribers", help="count subscribers")
+    p_subs.add_argument("file", nargs="?", default="data/subscribers.csv")
+    p_subs.add_argument("--since-days", type=int)
+    p_subs.add_argument("--since", type=date.fromisoformat)
+    p_subs.add_argument("--run-date", type=date.fromisoformat)
+    p_next = sub.add_parser("next-send", help="date of the next send")
+    p_next.add_argument("--run-date", type=date.fromisoformat)
+    args = parser.parse_args()
+
+    # The only place that reads today's date.
+    run_date = args.run_date or date.today()
+
+    if args.command == "subscribers":
+        subscribers = read_subscribers(args.file)
+        if args.since_days is not None:
+            subscribers = joined_within_days(subscribers, args.since_days, run_date)
+        elif args.since is not None:
+            subscribers = joined_since(subscribers, args.since, run_date)
         print(f"Total: {len(subscribers)}")
         for group, count in count_by_group(subscribers).items():
             print(f"{group}: {count}")
         consented = sum(1 for s in subscribers if s["consent"] != "")
         print(f"Gave consent: {consented}")
-    else:
-        print("Usage: mailroom.py subscribers [file]")
+    elif args.command == "next-send":
+        print(f"Next send: {next_send_date(run_date).isoformat()}")
 
 
 if __name__ == "__main__":

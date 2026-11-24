@@ -6,8 +6,9 @@
 - Commit and push after every step.
 - Keep every subscriber made up; never put real customer data in this repository.
 - Behaviors first: I give the expected answers, you write them as checks, show them failing, then write the code.
+- Never read today's date inside the logic. Pass the run date in.
 
 ## How I learn
-- I am new to Python. I have completed up to 13.8 of https://agentfactory.panaversity.org/building-ai-workers/programming-fundamentals/ and I update this number as I learn.
+- I am new to Python. I have completed up to 13.9 of https://agentfactory.panaversity.org/building-ai-workers/programming-fundamentals/ and I update this number as I learn.
 - Write only with what I have learned. If something new would really help, stop and tell me its name in one line. I decide.
 - When the code uses something new, show me that piece first and ask me to predict what it does. Stay quiet while I guess. Then run it, and explain a line only when I ask.

@@ -36,11 +36,21 @@ def test_no_first_name_is_one_problem() -> None:
     assert "first_name" in problems[0]
 
 
-def test_two_links_is_one_problem_even_with_http() -> None:
+def test_two_links_one_of_them_http_is_two_problems() -> None:
+    # Decided in step 24: an http:// link is a problem of its own, so this issue has two problems
+    # (two links, and one of them is not https). This replaces the older "one problem" answer.
     extra = "\n[Read more](http://kettlebird.example/blog)\n"
     problems = check_issue(Issue(ISSUE.replace("Steep well,", extra + "\nSteep well,")))
+    assert len(problems) == 2
+    assert any("exactly one link" in p for p in problems)
+    assert any("https" in p for p in problems)
+
+
+def test_http_link_is_a_problem() -> None:
+    text = ISSUE.replace("https://kettlebird.example/steep-club", "http://kettlebird.example/steep-club")
+    problems = check_issue(Issue(text))
     assert len(problems) == 1
-    assert "link" in problems[0]
+    assert "https" in problems[0]
 
 
 def test_no_link_is_one_problem() -> None:

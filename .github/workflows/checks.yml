@@ -1,0 +1,25 @@
+name: checks
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Install
+        run: uv sync
+      - name: Tests
+        run: uv run pytest
+      - name: Types
+        run: uv run pyright
+      - name: Check every issue
+        run: |
+          for issue in issues/*.md; do
+            echo "== $issue"
+            uv run mailroom check "$issue"
+          done

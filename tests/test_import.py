@@ -15,3 +15,14 @@ def test_model_rejects_omar_lena_kofi_hana_with_reasons() -> None:
     assert "consent" in reasons["Lena"]
     assert "group" in reasons["Kofi"]
     assert "joined_on" in reasons["Hana"]
+
+
+def test_our_rules_accept_only_maria_and_ines() -> None:
+    from datetime import date
+
+    from mailroom.subscribers import apply_our_rules
+
+    accepted, _ = import_rows("data/new-signups.csv")
+    kept, broken = apply_our_rules(accepted, date(2026, 11, 20))
+    assert [s.first_name for s in kept] == ["Maria", "Ines"]
+    assert [s.first_name for s, _ in broken] == ["Sara", "Tom"]

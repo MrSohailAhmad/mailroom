@@ -1,9 +1,6 @@
 from mailroom.subscribers import import_rows
 
 
-def names(rows: list[tuple[int, str, str | None]]) -> list[str]:
-    return [name for _, name, _ in rows]
-
 
 def test_model_accepts_maria_sara_tom_ines() -> None:
     accepted, _ = import_rows("data/new-signups.csv")

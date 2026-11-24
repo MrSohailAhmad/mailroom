@@ -1,36 +1,49 @@
 import csv
-from dataclasses import dataclass
 from datetime import date, timedelta
+from typing import Literal
+
+from pydantic import BaseModel, EmailStr, Field, ValidationError
+
+Group = Literal["tea-curious", "gift-buyers", "daily-drinkers"]
 
 
-@dataclass
-class Subscriber:
-    first_name: str
-    last_name: str
-    email: str
-    group: str
+class Subscriber(BaseModel):
+    first_name: str = Field(min_length=1)
+    last_name: str = Field(min_length=1)
+    email: EmailStr
+    group: Group
     joined_on: date
-    consent: str
+    consent: str = Field(min_length=1)
 
     @property
     def full_name(self) -> str:
         return f"{self.first_name} {self.last_name}"
 
 
-def read_subscribers(path: str) -> list[Subscriber]:
-    # The only place that knows the CSV column names.
+def reason(error: ValidationError) -> str:
+    parts: list[str] = []
+    for item in error.errors():
+        field = ".".join(str(part) for part in item["loc"])
+        parts.append(f"{field}: {item['msg']}")
+    return "; ".join(parts)
+
+
+def import_rows(path: str) -> tuple[list[Subscriber], list[tuple[str, str]]]:
+    """Read a CSV through the model. Returns (accepted, [(first_name, reason)])."""
+    accepted: list[Subscriber] = []
+    rejected: list[tuple[str, str]] = []
     with open(path, encoding="utf-8", newline="") as file:
-        return [
-            Subscriber(
-                first_name=row["first_name"],
-                last_name=row["last_name"],
-                email=row["email"],
-                group=row["group"],
-                joined_on=date.fromisoformat(row["joined_on"]),
-                consent=row["consent"],
-            )
-            for row in csv.DictReader(file)
-        ]
+        for row in csv.DictReader(file):
+            try:
+                accepted.append(Subscriber.model_validate(row))
+            except ValidationError as error:
+                rejected.append((row.get("first_name") or "?", reason(error)))
+    return accepted, rejected
+
+
+def read_subscribers(path: str) -> list[Subscriber]:
+    accepted, _ = import_rows(path)
+    return accepted
 
 
 def count_by_group(subscribers: list[Subscriber]) -> dict[str, int]:

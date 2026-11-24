@@ -78,3 +78,19 @@ def test_check_command_prints_each_problem_and_exits_1(tmp_path: Path) -> None:
     result = run_check(str(bad))
     assert result.returncode == 1
     assert len(result.stdout.strip().splitlines()) == 2
+
+
+def test_preview_that_repeats_the_subject_is_a_problem() -> None:
+    lines = ISSUE.splitlines(keepends=True)
+    lines[1] = "Preview: The Steep Club opens Monday\n"
+    problems = check_issue(Issue("".join(lines)))
+    assert len(problems) == 1
+    assert "repeats the subject" in problems[0]
+
+
+def test_preview_that_contains_the_subject_is_a_problem() -> None:
+    lines = ISSUE.splitlines(keepends=True)
+    lines[1] = "Preview: Big news: the steep club opens monday, with three teas.\n"
+    problems = check_issue(Issue("".join(lines)))
+    assert len(problems) == 1
+    assert "repeats the subject" in problems[0]

@@ -37,3 +37,11 @@ def test_missing_subject_line_is_a_problem():
     problems = check_subject("Preview: A short preview\n\nHi {{first_name}},\n")
     assert len(problems) == 1
     assert "missing" in problems[0]
+
+
+def test_emoji_with_skin_tone_counts_as_two_characters():
+    # "👍🏽" is two code points, so len() says 2. We count what len() counts.
+    subject = "👍🏽" + "x" * 48  # 50 by len(), 49 as a reader sees it
+    assert len(subject) == 50
+    assert check_subject(issue_with_subject(subject)) == []
+    assert len(check_subject(issue_with_subject(subject + "x"))) == 1

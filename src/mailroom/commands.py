@@ -5,7 +5,8 @@ from pathlib import Path
 
 from mailroom.checks import check_issue
 from mailroom.issue import Issue
-from mailroom.plan import build_plan, write_plan
+from mailroom.plan import PlannedEmail, body_without_headers, build_plan, write_plan
+from mailroom.sending import SendRefused, api_key, get_email, make_client, send_one
 from mailroom.send_dates import next_send_date
 from mailroom.subscribers import (
     DataFileError,
@@ -41,6 +42,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_send.add_argument("--subscribers", default="data/subscribers.csv")
     p_send.add_argument("--outbox", default="outbox")
 
+    p_one = sub.add_parser("send-one", help="send one email to the practice server")
+    p_one.add_argument("issue")
+    p_one.add_argument("--to", required=True)
+
     p_next = sub.add_parser("next-send", help="date of the next send")
     p_next.add_argument("--run-date", type=date.fromisoformat)
     return parser
@@ -59,7 +64,7 @@ def main() -> None:
 
     try:
         run(args, run_date)
-    except DataFileError as error:
+    except (DataFileError, SendRefused) as error:
         print(error, file=sys.stderr)
         sys.exit(2)
 
@@ -112,5 +117,19 @@ def run(args: argparse.Namespace, run_date: date) -> None:
         print(f"Planned {len(plan.emails)} emails -> {plan_path}")
         if not args.dry_run:
             print("Real sending arrives in a later step; use --dry-run.")
+    elif args.command == "send-one":
+        issue = Issue.from_file(args.issue)
+        problems = check_issue(issue)
+        if problems:
+            for problem in problems:
+                print(problem)
+            sys.exit(1)
+        text = issue.personalize("there")
+        email = PlannedEmail(to=args.to, group="practice", subject=issue.subject or "", text=body_without_headers(text))
+        with make_client() as client:
+            email_id = send_one(client, email, api_key())
+            print(f"Sent: 200 id={email_id}")
+            status = get_email(client, email_id, api_key())
+            print(f"Status: {status.get('last_event', 'unknown')}")
     elif args.command == "next-send":
         print(f"Next send: {next_send_date(run_date).isoformat()}")

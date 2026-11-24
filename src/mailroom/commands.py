@@ -8,7 +8,7 @@ from mailroom.send_dates import next_send_date
 from mailroom.subscribers import count_by_group, joined_since, joined_within_days, read_subscribers
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(prog="mailroom")
     sub = parser.add_subparsers(dest="command", required=True)
     p_subs = sub.add_parser("subscribers", help="count subscribers")
@@ -23,7 +23,7 @@ def main():
     args = parser.parse_args()
 
     # The only place that reads today's date.
-    run_date = getattr(args, "run_date", None) or date.today()
+    run_date: date = getattr(args, "run_date", None) or date.today()
 
     if args.command == "subscribers":
         subscribers = read_subscribers(args.file)

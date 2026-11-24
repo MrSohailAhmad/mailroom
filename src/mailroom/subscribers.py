@@ -1,4 +1,5 @@
 import csv
+from dataclasses import dataclass
 from datetime import date, timedelta
 from typing import Literal
 
@@ -20,6 +21,29 @@ class Subscriber(BaseModel):
         return f"{self.first_name} {self.last_name}"
 
 
+COLUMNS = ["first_name", "last_name", "email", "group", "joined_on", "consent"]
+
+
+class DataFileError(Exception):
+    """A problem with the whole file: stop everything."""
+
+
+@dataclass
+class Problem:
+    row: int
+    field: str
+    message: str
+
+    def __str__(self) -> str:
+        return f"row {self.row}, {self.field}: {self.message}"
+
+
+@dataclass
+class LoadResult:
+    good: list[Subscriber]
+    problems: list[Problem]
+
+
 def reason(error: ValidationError) -> str:
     parts: list[str] = []
     for item in error.errors():
@@ -28,16 +52,26 @@ def reason(error: ValidationError) -> str:
     return "; ".join(parts)
 
 
+def read_rows(path: str) -> list[dict[str, str]]:
+    try:
+        with open(path, encoding="utf-8", newline="") as file:
+            reader = csv.DictReader(file)
+            if reader.fieldnames != COLUMNS:
+                raise DataFileError(f"{path} has the wrong columns: expected {','.join(COLUMNS)}.")
+            return list(reader)
+    except FileNotFoundError:
+        raise DataFileError(f"{path} does not exist.") from None
+
+
 def import_rows(path: str) -> tuple[list[Subscriber], list[tuple[str, str]]]:
     """Read a CSV through the model. Returns (accepted, [(first_name, reason)])."""
     accepted: list[Subscriber] = []
     rejected: list[tuple[str, str]] = []
-    with open(path, encoding="utf-8", newline="") as file:
-        for row in csv.DictReader(file):
-            try:
-                accepted.append(Subscriber.model_validate(row))
-            except ValidationError as error:
-                rejected.append((row.get("first_name") or "?", reason(error)))
+    for row in read_rows(path):
+        try:
+            accepted.append(Subscriber.model_validate(row))
+        except ValidationError as error:
+            rejected.append((row.get("first_name") or "?", reason(error)))
     return accepted, rejected
 
 
@@ -61,6 +95,29 @@ def apply_our_rules(
         else:
             kept.append(subscriber)
     return kept, broken
+
+
+def load_subscribers(path: str, run_date: date) -> LoadResult:
+    """Return the good subscribers and every problem, each with its row and field.
+
+    Row numbers are file lines: the header is row 1, so the first person is row 2.
+    """
+    good: list[Subscriber] = []
+    problems: list[Problem] = []
+    for row_number, row in enumerate(read_rows(path), start=2):
+        try:
+            subscriber = Subscriber.model_validate(row)
+        except ValidationError as error:
+            for item in error.errors():
+                field = ".".join(str(part) for part in item["loc"])
+                problems.append(Problem(row_number, field, item["msg"]))
+            continue
+        kept, broken = apply_our_rules([subscriber], run_date)
+        good += kept
+        for _, why in broken:
+            field, message = why.split(": ", 1)
+            problems.append(Problem(row_number, field, message))
+    return LoadResult(good, problems)
 
 
 def read_subscribers(path: str) -> list[Subscriber]:

@@ -5,31 +5,60 @@ from datetime import date
 from mailroom.checks import check_issue
 from mailroom.issue import Issue
 from mailroom.send_dates import next_send_date
-from mailroom.subscribers import apply_our_rules, count_by_group, import_rows, joined_since, joined_within_days, read_subscribers
+from mailroom.subscribers import (
+    DataFileError,
+    LoadResult,
+    count_by_group,
+    joined_since,
+    joined_within_days,
+    load_subscribers,
+)
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(prog="mailroom")
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="mailroom", description="Kettlebird Tea Steep Club newsletter tool.")
     sub = parser.add_subparsers(dest="command", required=True)
+
     p_subs = sub.add_parser("subscribers", help="count subscribers")
     p_subs.add_argument("file", nargs="?", default="data/subscribers.csv")
     p_subs.add_argument("--since-days", type=int)
     p_subs.add_argument("--since", type=date.fromisoformat)
     p_subs.add_argument("--run-date", type=date.fromisoformat)
+
     p_check = sub.add_parser("check", help="check an issue against the rules")
     p_check.add_argument("issue")
-    p_import = sub.add_parser("import", help="check new sign-ups through the model")
+
+    p_import = sub.add_parser("import", help="check new sign-ups through the model and our rules")
     p_import.add_argument("file")
     p_import.add_argument("--run-date", type=date.fromisoformat)
+
     p_next = sub.add_parser("next-send", help="date of the next send")
     p_next.add_argument("--run-date", type=date.fromisoformat)
-    args = parser.parse_args()
+    return parser
+
+
+def print_problems(result: LoadResult) -> None:
+    for problem in result.problems:
+        print(problem)
+
+
+def main() -> None:
+    args = build_parser().parse_args()
 
     # The only place that reads today's date.
     run_date: date = getattr(args, "run_date", None) or date.today()
 
+    try:
+        run(args, run_date)
+    except DataFileError as error:
+        print(error, file=sys.stderr)
+        sys.exit(2)
+
+
+def run(args: argparse.Namespace, run_date: date) -> None:
     if args.command == "subscribers":
-        subscribers = read_subscribers(args.file)
+        result = load_subscribers(args.file, run_date)
+        subscribers = result.good
         if args.since_days is not None:
             subscribers = joined_within_days(subscribers, args.since_days, run_date)
         elif args.since is not None:
@@ -39,6 +68,9 @@ def main() -> None:
             print(f"{group}: {count}")
         consented = sum(1 for s in subscribers if s.consent != "")
         print(f"Gave consent: {consented}")
+        print_problems(result)
+        if result.problems:
+            sys.exit(1)
     elif args.command == "check":
         problems = check_issue(Issue.from_file(args.issue))
         if problems:
@@ -47,12 +79,11 @@ def main() -> None:
             sys.exit(1)
         print("OK")
     elif args.command == "import":
-        accepted, rejected = import_rows(args.file)
-        accepted, broken = apply_our_rules(accepted, run_date)
-        rejected += [(subscriber.first_name, why) for subscriber, why in broken]
-        for subscriber in accepted:
+        result = load_subscribers(args.file, run_date)
+        for subscriber in result.good:
             print(f"accepted: {subscriber.full_name}")
-        for name, why in rejected:
-            print(f"rejected: {name}: {why}")
+        print_problems(result)
+        if result.problems:
+            sys.exit(1)
     elif args.command == "next-send":
         print(f"Next send: {next_send_date(run_date).isoformat()}")

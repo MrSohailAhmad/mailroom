@@ -16,8 +16,9 @@
 - Pass Subscriber and Issue objects around, never raw rows or raw text.
 - Data from outside goes through the model before any code uses it.
 - The model checks the shape. Our own rules check the meaning.
+- Report every problem with its row. No traceback for a user's mistake.
 
 ## How I learn
-- I am new to Python. I have completed up to 14.5 of https://agentfactory.panaversity.org/building-ai-workers/programming-fundamentals/ and I update this number as I learn.
+- I am new to Python. I have completed up to 14.6 of https://agentfactory.panaversity.org/building-ai-workers/programming-fundamentals/ and I update this number as I learn.
 - Write only with what I have learned. If something new would really help, stop and tell me its name in one line. I decide.
 - When the code uses something new, show me that piece first and ask me to predict what it does. Stay quiet while I guess. Then run it, and explain a line only when I ask.

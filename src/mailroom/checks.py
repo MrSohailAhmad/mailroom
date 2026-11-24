@@ -21,6 +21,8 @@ def check_preview(issue: Issue) -> list[str]:
         return ["Preview is empty"]
     if len(issue.preview) > MAX_PREVIEW:
         return [f"Preview is too long: {len(issue.preview)} characters (max {MAX_PREVIEW})"]
+    if issue.subject and issue.subject.lower() in issue.preview.lower():
+        return ["Preview repeats the subject"]
     return []
 
 

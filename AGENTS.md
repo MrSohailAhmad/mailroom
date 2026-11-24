@@ -23,8 +23,11 @@
 - Send with a limit on how many at once.
 - Retry only what can succeed later, and every send has an idempotency key.
 - Mailroom sends with httpx, not the resend SDK: our guards, errors, retries and async stay in our own code.
+- Every change goes on a branch and arrives as a pull request.
+- A pull request shows its evidence.
+- The checks must pass before a merge.
 
 ## How I learn
-- I am new to Python. I have completed up to 14.9 of https://agentfactory.panaversity.org/building-ai-workers/programming-fundamentals/ and I update this number as I learn.
+- I am new to Python. I have completed up to 15.8 of https://agentfactory.panaversity.org/building-ai-workers/programming-fundamentals/ and I update this number as I learn.
 - Write only with what I have learned. If something new would really help, stop and tell me its name in one line. I decide.
 - When the code uses something new, show me that piece first and ask me to predict what it does. Stay quiet while I guess. Then run it, and explain a line only when I ask.

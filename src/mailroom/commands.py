@@ -1,9 +1,11 @@
 import argparse
 import sys
 from datetime import date
+from pathlib import Path
 
 from mailroom.checks import check_issue
 from mailroom.issue import Issue
+from mailroom.plan import build_plan, write_plan
 from mailroom.send_dates import next_send_date
 from mailroom.subscribers import (
     DataFileError,
@@ -31,6 +33,13 @@ def build_parser() -> argparse.ArgumentParser:
     p_import = sub.add_parser("import", help="check new sign-ups through the model and our rules")
     p_import.add_argument("file")
     p_import.add_argument("--run-date", type=date.fromisoformat)
+
+    p_send = sub.add_parser("send", help="send an issue to every subscriber")
+    p_send.add_argument("issue")
+    p_send.add_argument("--dry-run", action="store_true", help="only write outbox/plan.json")
+    p_send.add_argument("--run-date", type=date.fromisoformat)
+    p_send.add_argument("--subscribers", default="data/subscribers.csv")
+    p_send.add_argument("--outbox", default="outbox")
 
     p_next = sub.add_parser("next-send", help="date of the next send")
     p_next.add_argument("--run-date", type=date.fromisoformat)
@@ -85,5 +94,23 @@ def run(args: argparse.Namespace, run_date: date) -> None:
         print_problems(result)
         if result.problems:
             sys.exit(1)
+    elif args.command == "send":
+        issue = Issue.from_file(args.issue)
+        problems = check_issue(issue)
+        if problems:
+            for problem in problems:
+                print(problem)
+            print("The issue failed the check, so nothing was planned or sent.")
+            sys.exit(1)
+        result = load_subscribers(args.subscribers, run_date)
+        if result.problems:
+            print_problems(result)
+            sys.exit(1)
+        plan = build_plan(issue, result.good, run_date, Path(args.issue).stem)
+        plan_path = str(Path(args.outbox) / "plan.json")
+        write_plan(plan, plan_path)
+        print(f"Planned {len(plan.emails)} emails -> {plan_path}")
+        if not args.dry_run:
+            print("Real sending arrives in a later step; use --dry-run.")
     elif args.command == "next-send":
         print(f"Next send: {next_send_date(run_date).isoformat()}")

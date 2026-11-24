@@ -4,3 +4,12 @@ version = "0.1.0"
 description = "Command-line tool for the Kettlebird Tea Steep Club newsletter"
 requires-python = ">=3.12"
 dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=9.2.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

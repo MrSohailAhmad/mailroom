@@ -6,6 +6,7 @@ from datetime import date
 from pathlib import Path
 
 from mailroom.checks import check_issue
+from mailroom.guard import guard_tool_call
 from mailroom.issue import Issue
 from mailroom.report import build_report, read_sent, write_sent
 from mailroom.plan import PlannedEmail, body_without_headers, build_plan, write_plan
@@ -40,7 +41,8 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_subs = sub.add_parser("subscribers", help="count subscribers")
-    p_subs.add_argument("file", nargs="?", default="data/subscribers.csv")
+    p_subs.add_argument("file", nargs="?", default=None)
+    p_subs.add_argument("--subscribers", default="data/subscribers.csv", help="subscribers CSV file")
     p_subs.add_argument("--since-days", type=int)
     p_subs.add_argument("--since", type=date.fromisoformat)
     p_subs.add_argument("--run-date", type=date.fromisoformat)
@@ -67,6 +69,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     p_report = sub.add_parser("report", help="how many emails each group got, and any failures")
     p_report.add_argument("--outbox", default="outbox")
+
+    sub.add_parser("guard", help="check a Claude Code hook's tool call (JSON on stdin); exit 2 blocks it")
 
     p_next = sub.add_parser("next-send", help="date of the next send")
     p_next.add_argument("--run-date", type=date.fromisoformat)
@@ -110,7 +114,7 @@ def main() -> None:
 
 def run(args: argparse.Namespace, run_date: date) -> None:
     if args.command == "subscribers":
-        result = load_subscribers(args.file, run_date)
+        result = load_subscribers(args.file or args.subscribers, run_date)
         subscribers = result.good
         if args.since_days is not None:
             subscribers = joined_within_days(subscribers, args.since_days, run_date)
@@ -191,5 +195,10 @@ def run(args: argparse.Namespace, run_date: date) -> None:
             print(f"failed: {failure.to}: {failure.error}")
         if report.failures:
             sys.exit(1)
+    elif args.command == "guard":
+        allowed, reason = guard_tool_call(sys.stdin.read())
+        if not allowed:
+            print(reason, file=sys.stderr)
+            sys.exit(2)
     elif args.command == "next-send":
         print(f"Next send: {next_send_date(run_date).isoformat()}")

@@ -6,7 +6,7 @@ from pathlib import Path
 from mailroom.checks import check_issue
 from mailroom.issue import Issue
 from mailroom.plan import PlannedEmail, body_without_headers, build_plan, write_plan
-from mailroom.sending import SendRefused, api_key, get_email, make_client, send_one
+from mailroom.sending import SendError, SendRefused, api_key, get_email, make_client, send_one
 from mailroom.send_dates import next_send_date
 from mailroom.subscribers import (
     DataFileError,
@@ -67,6 +67,9 @@ def main() -> None:
     except (DataFileError, SendRefused) as error:
         print(error, file=sys.stderr)
         sys.exit(2)
+    except SendError as error:
+        print(error, file=sys.stderr)
+        sys.exit(1)
 
 
 def run(args: argparse.Namespace, run_date: date) -> None:

@@ -19,6 +19,7 @@
 - Report every problem with its row. No traceback for a user's mistake.
 - JSON read from a file is outside data: it goes through a model too.
 - The key and the address come from the environment. Sending works only against localhost.
+- Handle each status on purpose. Never retry a 4xx.
 
 ## How I learn
 - I am new to Python. I have completed up to 14.7 of https://agentfactory.panaversity.org/building-ai-workers/programming-fundamentals/ and I update this number as I learn.
